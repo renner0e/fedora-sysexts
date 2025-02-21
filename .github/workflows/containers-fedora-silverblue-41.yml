@@ -765,6 +765,36 @@ jobs:
             --from
             ${{ env.IMAGE }}:${{ env.RELEASE }}
 
+      - name: "Checking if we need to build container: mpd"
+        id: check-mpd
+        env:
+          SYSEXT: mpd
+        run: |
+          cd "${SYSEXT}"
+          if [[ "${PR}" == "true" ]]; then
+              diff="$(git diff origin/main HEAD --stat -- .)"
+              if [[ -z "${diff}" ]]; then
+                  echo "Skipping: No changes for this sysext in this PR"
+                  echo "BUILD=false" >> "$GITHUB_OUTPUT"
+                  exit 0
+              fi
+          fi
+          echo "BUILD=true" >> "$GITHUB_OUTPUT"
+
+      - name: "Build container: mpd"
+        uses: redhat-actions/buildah-build@v2
+        if: (steps.check-mpd.outputs.BUILD == 'true')
+        with:
+          context: 'mpd'
+          image: ${{ env.DESTINATION }}
+          tags: ${{ env.RELEASE }}.mpd
+          containerfiles: 'mpd/Containerfile'
+          layers: false
+          oci: true
+          extra-args:
+            --from
+            ${{ env.IMAGE }}:${{ env.RELEASE }}
+
       - name: "Checking if we need to build container: mullvad-vpn"
         id: check-mullvad-vpn
         env:
